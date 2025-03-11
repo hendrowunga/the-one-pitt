@@ -1,0 +1,90 @@
+# Konfigurasi Optimal untuk Mempelajari Karakteristik Spray and Wait
+
+## Pengaturan Skenario
+Scenario.name = SprayAndWaitSimulation_RandomMovement
+# Aktifkan simulasi koneksi (penting untuk DTN)
+Scenario.simulateConnections = true
+# Interval pembaruan simulasi (semakin kecil, semakin akurat, tetapi semakin lambat)
+Scenario.updateInterval = 0.1
+# Waktu simulasi (detik) - 12 jam (cukup untuk melihat pola jangka panjang)
+Scenario.endTime = 43200
+
+## Pengaturan Interface (Bluetooth)
+# Tipe interface: SimpleBroadcastInterface
+btInterface.type = SimpleBroadcastInterface
+# Kecepatan transmisi interface (bytes per detik) - 250kBps (cukup realistis untuk Bluetooth)
+btInterface.transmitSpeed = 250k
+# Jangkauan transmisi interface (meter) - 10 meter (sesuaikan dengan skenario Anda)
+btInterface.transmitRange = 10
+
+## Pengaturan Grup Host
+# Jumlah grup host yang berbeda (dalam kasus ini, hanya satu grup)
+Scenario.nrofHostGroups = 1
+
+# Pengaturan umum untuk grup host
+# Model pergerakan: Random Waypoint (sederhana dan umum)
+Group.movementModel = RandomWaypoint
+# Router: DecisionEngineRouter (memungkinkan penggunaan DecisionEngine)
+Group.router = DecisionEngineRouter
+# Ukuran buffer pesan (bytes) - 5MB (sesuaikan dengan kebutuhan Anda)
+Group.bufferSize = 50M
+# Waktu tunggu (detik) setelah mencapai tujuan (acak antara min dan max)
+Group.waitTime = 0, 120
+# Kecepatan pergerakan (m/s) (acak antara min dan max)
+Group.speed = 0.5, 1.5
+# Jumlah interface yang dimiliki setiap host (dalam kasus ini, hanya 1)
+Group.nrofInterfaces = 1
+# Interface yang digunakan (dalam kasus ini, Bluetooth)
+Group.interface1 = btInterface
+# Time-to-Live (TTL) pesan (menit) - 300 menit (5 jam)
+Group.msgTtl = 300
+# Jumlah host dalam grup
+Group.nrofHosts = 100
+
+# Pengaturan khusus untuk DecisionEngineRouter dan SprayAndWait
+# Menggunakan SprayAndWaitDecisionEngine
+DecisionEngineRouter.decisionEngine = SprayAndWaitDecisionEngine
+# Jumlah salinan awal (L) - **Kunci untuk performa!**
+SprayAndWaitDecisionEngine.nrofCopies = 10
+# Menggunakan mode biner (bagi dua setiap kali dikirim)
+SprayAndWaitDecisionEngine.binaryMode = true
+
+# Pengaturan khusus untuk Grup 1 (satu-satunya grup)
+# ID grup (dapat digunakan untuk membedakan grup dalam laporan)
+Group1.groupID = m
+
+## Pengaturan Pembuatan Pesan
+# Jumlah event generator (sumber pesan)
+Events.nrof = 1
+# Class event generator yang digunakan (MessageEventGenerator membuat pesan acak)
+Events1.class = MessageEventGenerator
+# Interval pembuatan pesan (detik) (acak antara min dan max)
+Events1.interval = 25,35
+# Ukuran pesan (bytes) (acak antara min dan max)
+Events1.size = 500k,1M
+# Jangkauan host pengirim dan penerima pesan (acak di antara semua host)
+Events1.hosts = 0,99
+# Prefix ID pesan (memudahkan untuk mengidentifikasi pesan dari generator ini)
+Events1.prefix = M
+
+## Pengaturan Model Pergerakan (Random Waypoint)
+# Ukuran dunia simulasi (meter)
+MovementModel.worldSize = 300, 300
+# Waktu pemanasan (detik) sebelum simulasi "nyata" dimulai
+MovementModel.warmup = 1000
+
+## Pengaturan Laporan
+# Jumlah laporan yang dihasilkan
+Report.nrofReports = 6
+# Direktori tempat laporan disimpan
+Report.reportDir = reports/SprayAndWait/random
+# Waktu pemanasan untuk laporan (data sebelum waktu ini tidak disertakan)
+Report.warmup = 0
+# Laporan yang akan dihasilkan
+Report.report1 = MessageStatsReport
+Report.report2 = MessageLatencyPerContactReport
+Report.report3 = MessageOverheadPerContactReport
+Report.report4 = MessagePercentaceDeliveryPerContactReport
+Report.report5 = MessageForwardingPerContactReport
+Report.report6 = AlgorithmicComparisonReport
+

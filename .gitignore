@@ -52,12 +52,16 @@ nbproject/private/
 
 # ========== SIMULATION / REPORT FILES ==========
 # Simulation report files
-reports/*.txt
-reports/*/*.txt
-config/*/*.txt
+reports/
 
 # Javadoc
 *.html
 doc/stylesheet.css
 doc/resources/*.gif
 doc/package-list
+
+# Jangan abaikan folder config dan semua isinya
+!the-one/config/
+!the-one/config/**
+
+

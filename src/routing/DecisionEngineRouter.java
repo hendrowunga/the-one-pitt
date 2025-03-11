@@ -385,6 +385,11 @@ public class DecisionEngineRouter extends ActiveRouter {
     protected void transferDone(Connection con) {
         Message transferred = this.getMessage(con.getMessage().getId());
 
+        // Tambahkan thisHost ke pesan hanya jika belum ada
+        if (transferred.getProperty("thisHost") == null) {
+            transferred.addProperty("thisHost", getHost());
+        }
+
         for (Iterator<Tuple<Message, Connection>> i = outgoingMessages.iterator();
              i.hasNext();) {
             Tuple<Message, Connection> t = i.next();

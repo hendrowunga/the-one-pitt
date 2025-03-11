@@ -7,7 +7,7 @@ import core.MessageListener;
 
 import java.util.*;
 
-public class MessageSprayAndWaitReport extends Report implements MessageListener, ConnectionListener {
+public class AlgorithmicComparisonReport extends Report implements MessageListener, ConnectionListener {
     public static final String NROF_CONTACT_INTERVAL = "perTotalContact";
     public static final int DEFAULT_CONTACT_COUNT = 100; // Reduced default interval
     private int lastRecord;
@@ -27,7 +27,7 @@ public class MessageSprayAndWaitReport extends Report implements MessageListener
     private Map<Integer, Double> nrofDeliver;
 
     // Constructor:
-    public MessageSprayAndWaitReport() {
+    public AlgorithmicComparisonReport() {
         init();
         if (getSettings().contains(NROF_CONTACT_INTERVAL)) {
             interval = getSettings().getInt(NROF_CONTACT_INTERVAL);
