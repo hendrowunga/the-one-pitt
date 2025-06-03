@@ -10,9 +10,9 @@ import routing.MessageRouter;
  * A connection between two DTN nodes.
  */
 public abstract class Connection {
-	protected DTNHost toNode;
+	public DTNHost toNode;
 	protected NetworkInterface toInterface;
-	protected DTNHost fromNode;
+	public DTNHost fromNode;
 	protected NetworkInterface fromInterface;
 	protected DTNHost msgFromNode;
 
