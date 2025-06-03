@@ -7,172 +7,190 @@ import core.*;
  * © 2025 hendrowunga, University of Sanata Dharma
  * Created on 5/30/25
  */
+
 public class LevyWalk extends MovementModel {
-    private static final String ALPHA_S = "alpha"; // Shape parameter for Pareto step length
-    private static final String MIN_STEP_LENGTH_S = "min_step_length"; // Minimum step length (Pareto scale parameter)
 
-    private double alpha; // Shape parameter for Pareto step length
-    private double minStepLength; // Minimum step length (Pareto scale parameter)
-
-    private Coord lastWaypoint; // Stores the node's current location
 
     /**
-     * Creates a new movement model based on a Settings object's settings.
-     * Reads Levy Walk specific parameters (alpha, min_step_length).
-     *
-     * @param s The Settings object where the settings are read from
-     * @throws SimError if settings are invalid.
+     * Smaller alpha means more frequent long jumps. Typical range 0 < alpha <= 2.
+     * Default value is {@link #DEFAULT_ALPHA}.
      */
-    public LevyWalk(Settings s) {
-        super(s); // Call superclass constructor to read common settings (speed, world size)
+    public static final String ALPHA_S = "alpha";
+    /**
+     * Minimum step length - setting id ({@value}).
+     * Default value is {@link #DEFAULT_MIN_STEP}.
+     */
+    public static final String MIN_STEP_S = "minStep"; // Nama setting "minStep"
+    /**
+     * Scale factor for step length - setting id ({@value}).
+     * Multiplies the value from the Pareto distribution.
+     * Default value is {@link #DEFAULT_SCALE_FACTOR}.
+     */
+    public static final String SCALE_FACTOR_S = "scaleFactor"; // Nama setting "scaleFactor"
 
-        try {
-            this.alpha = s.getDouble(ALPHA_S);
-        } catch (SettingsError e) {
-            System.err.println("Setting '" + ALPHA_S + "' not found, using default: 1.5");
-            this.alpha = 1.5; // Default alpha, common in Levy Walk literature
-        }
-        try {
-            // This min_step_length acts as the 'xm' or scale parameter for Pareto Type I
-            this.minStepLength = s.getDouble(MIN_STEP_LENGTH_S);
-        } catch (SettingsError e) {
-            System.err.println("Setting '" + MIN_STEP_LENGTH_S + "' not found, using default: 1.0");
-            this.minStepLength = 1.0; // Default minimum step length
-        }
+    public static final double DEFAULT_ALPHA = 1.5;
+    public static final double DEFAULT_MIN_STEP = 0.1;
+    public static final double DEFAULT_SCALE_FACTOR = 1.0;
 
+    private double alpha;
+    private double minStep;
+    private double scaleFactor;
 
-        // --- Validate Levy Walk specific settings ---
+    private Coord currentPosition; // Lokasi node saat ini
+
+    /**
+     * Creates a new LevyWalk movement model based on a Settings object's settings.
+     * Reads Levy Walk specific parameters (alpha, minStep, scaleFactor) from the
+     * settings object provided by the simulator (scoped to the host group).
+     *
+     * @param settings The Settings object where the settings are read from (scoped to the host group).
+     * @throws IllegalArgumentException if settings values are invalid.
+     */
+    public LevyWalk(Settings settings) {
+        super(settings);
+
+        this.alpha = settings.contains(ALPHA_S) ? settings.getDouble(ALPHA_S) : DEFAULT_ALPHA;
+        this.minStep = settings.contains(MIN_STEP_S) ? settings.getDouble(MIN_STEP_S) : DEFAULT_MIN_STEP;
+        this.scaleFactor = settings.contains(SCALE_FACTOR_S) ? settings.getDouble(SCALE_FACTOR_S) : DEFAULT_SCALE_FACTOR;
+
+        // --- Validasi Pengaturan ---
         if (this.alpha <= 0) {
-            throw new SimError("LevyWalk: " + ALPHA_S + " (" + this.alpha + ") must be positive.");
+            throw new IllegalArgumentException(ALPHA_S + " must be > 0. Value was " + this.alpha);
         }
-        if (this.minStepLength <= 0) {
-            throw new SimError(
-                    "LevyWalk: " + MIN_STEP_LENGTH_S + " (" + this.minStepLength + ") must be positive.");
+        if (this.minStep < 0) {
+            throw new IllegalArgumentException(MIN_STEP_S + " must be >= 0. Value was " + this.minStep);
         }
+        // Validasi scaleFactor bisa ditambahkan jika perlu (misal harus > 0)
 
-        // Initial location is set by calling getInitialLocation() later by the simulator
-        this.lastWaypoint = null; // Will be set by getInitialLocation()
+        // currentPosition akan diinisialisasi oleh getInitialLocation() saat pertama kali dibutuhkan
+        this.currentPosition = null;
     }
 
     /**
-     * Copy constructor. Creates a new instance with the same settings
-     * and state (lastWaypoint) as the prototype. Uses the shared static RNG.
-     *
-     * @param proto The LevyWalk prototype
+     * Copy constructor.
+     * @param proto The LevyWalk prototype to copy.
      */
     protected LevyWalk(LevyWalk proto) {
-        super(proto); // Call superclass copy constructor
+        super(proto);
+        this.alpha = proto.alpha;
+        this.minStep = proto.minStep;
+        this.scaleFactor = proto.scaleFactor;
 
-        // Copy specific settings
-        alpha = proto.alpha;
-        minStepLength = proto.minStepLength;
-
-        // Copy current location
-        this.lastWaypoint = (proto.lastWaypoint != null) ? proto.lastWaypoint.clone() : null;
+        if (proto.currentPosition != null) {
+            this.currentPosition = proto.currentPosition.clone();
+        } else {
+            this.currentPosition = null;
+        }
     }
 
     /**
-     * Returns a possible (random) initial placement for a host.
-     * Uses randomCoord() method (inherited from MovementModel) to get a random location.
-     * Stores this as the starting point for subsequent paths.
-     *
-     * @return Random position on the map.
+     * Returns a random initial placement for a host within world boundaries.
+     * @return Initial random position.
      */
     @Override
     public Coord getInitialLocation() {
-        Coord c = randomCoord();
-        this.lastWaypoint = c; // Store the initial location
-        return c;
+        assert rng != null : "MovementModel RNG not initialized!";
+
+        double worldX = getMaxX(); // Diwarisi dari superclass (dibaca di super(settings))
+        double worldY = getMaxY(); // Diwarisi dari superclass
+
+        double x = rng.nextDouble() * worldX;
+        double y = rng.nextDouble() * worldY;
+
+        this.currentPosition = new Coord(x, y);
+        return this.currentPosition.clone();
     }
 
     /**
-     * Generates and returns the next path (one Levy "flight") based on Python logic.
-     * The path starts from the current location (lastWaypoint).
-     * Samples step length from Pareto Type I (xm=minStepLength, alpha=alpha).
-     * Samples direction uniformly.
-     * If the potential new location is out of bounds, the node stays put.
-     *
-     * @return A Path object representing one flight segment (or staying put).
-     * @throws IllegalStateException if initial location is not set.
+     * Generates and returns the next path for the node (one step).
+     * Uses a non-standard Pareto-derived step length and 'stay put' boundary handling.
+     * @return A Path object for the next step.
      */
     @Override
     public Path getPath() {
-        if (this.lastWaypoint == null) {
-            throw new IllegalStateException("Initial location not set! Call getInitialLocation first.");
+        assert rng != null : "MovementModel RNG not initialized!";
+
+        // Pastikan currentPosition terinisialisasi (seharusnya sudah di getInitialLocation atau panggilan sebelumnya)
+        if (this.currentPosition == null) {
+            getInitialLocation(); // Fallback jika somehow belum terinisialisasi
         }
 
-        Coord oldLocation = this.lastWaypoint; // The current location of the node
+        // Path ini akan dari currentPosition (sebelum update) ke currentPosition (setelah update/penanganan batas)
+        Path path = new Path(generateSpeed()); // generateSpeed() diwarisi dan pakai pengaturan speed
+        path.addWaypoint(this.currentPosition.clone()); // Tambahkan lokasi awal langkah sebagai waypoint pertama (opsional, gaya)
 
-        // Get world dimensions from superclass
-        double maxX = getMaxX();
-        double maxY = getMaxY();
-
-        // --- 1. Generate Step Length (Pareto Type I, xm = minStepLength, alpha) ---
-        // Using inverse CDF for Pareto Type I: X = xm / (U ^ (1/alpha)), where U is uniform (0, 1]
-        // rng.nextDouble() gives [0.0, 1.0). Using 1.0 - rng.nextDouble() gives (0.0, 1.0]
-        double stepLength = this.minStepLength / Math.pow(1.0 - rng.nextDouble(), 1.0 / this.alpha);
-
-        // --- 2. Generate Random Direction [0, 2*PI) ---
-        double direction = rng.nextDouble() * 2.0 * Math.PI;
-
-        // --- 3. Calculate Potential New Location ---
-        double x = oldLocation.getX() + stepLength * Math.cos(direction);
-        double y = oldLocation.getY() + stepLength * Math.sin(direction);
-
-        Coord potentialNewLocation = new Coord(x, y);
-
-        // --- 4. Boundary Handling (Python Style: Stay Put if Out of Bounds) ---
-        Coord finalLocation;
-        if (x >= 0 && x <= maxX && y >= 0 && y <= maxY) {
-            // If potential location is within bounds, this is the final location
-            finalLocation = potentialNewLocation;
-        } else {
-            // If potential location is out of bounds, the node stays at the old location
-            finalLocation = oldLocation; // Note: this is the OLD location
-            // System.out.println("Step out of bounds, staying put at: " + oldLocation); // Debugging
+        // --- Pembangkitan Panjang Langkah (Non-Standar Pareto) ---
+        double u = 0.0;
+        while (u == 0.0) { // Pastikan u tidak nol
+            u = rng.nextDouble();
         }
+        // Menghasilkan nilai dari distribusi Pareto Tipe I dengan xm=1
+        double paretoSample_xm1 = Math.pow(u, -1.0 / this.alpha);
+        // Menggeser dan mengskalakan nilai sampel Pareto(alpha, 1)
+        double stepLength = this.minStep + paretoSample_xm1 * this.scaleFactor;
+        // --- End Pembangkitan Panjang Langkah ---
 
-        // Update the lastWaypoint to the final decided location (either new or old)
-        this.lastWaypoint = finalLocation;
 
-        // --- 5. Create Path ---
-        // A path always goes from the starting point of the step to the final location
-        // The speed is generated uniformly using the inherited method
-        Path p = new Path(generateSpeed());
-        p.addWaypoint(finalLocation); // Add the final location as the destination
+        // --- Pembangkitan Arah Acak Seragam ---
+        double theta = rng.nextDouble() * 2.0 * Math.PI;
+        // --- End Pembangkitan Arah ---
 
-        return p; // Return the path
+        // --- Hitung Lokasi Baru Potensial ---
+        double dx = stepLength * Math.cos(theta);
+        double dy = stepLength * Math.sin(theta);
+        double potentialNewX = this.currentPosition.getX() + dx;
+        double potentialNewY = this.currentPosition.getY() + dy;
+        // --- End Hitung Lokasi Baru Potensial ---
+
+
+        // --- Penanganan Batas ('Stay Put' if out of bounds) ---
+        double worldMaxX = getMaxX(); // Diwarisi
+        double worldMaxY = getMaxY(); // Diwarisi
+
+        if (potentialNewX >= 0 && potentialNewX <= worldMaxX && potentialNewY >= 0 && potentialNewY <= worldMaxY) {
+            // Jika lokasi potensial di dalam batas, update posisi node
+            this.currentPosition.setLocation(potentialNewX, potentialNewY);
+        }
+        // Jika lokasi potensial di luar batas, currentPosition TIDAK DIUBAH, node tetap di tempat
+        // --- End Penanganan Batas ---
+
+        // Tambahkan lokasi node setelah penanganan batas (bisa lokasi baru atau lokasi lama)
+        // sebagai waypoint kedua. Path akan dari lokasi awal langkah ke lokasi akhir langkah.
+        path.addWaypoint(this.currentPosition.clone());
+
+        return path; // Kembalikan path (segmen langkah tunggal)
     }
 
     /**
-     * Returns a sim time when the next path is available.
-     * Mimics Python behavior by having no explicit pause time.
-     * The next path is available immediately after the current one finishes.
-     *
-     * @return The current simulation time (meaning immediately available)
+     * Returns the simulation time when the next path is available.
+     * Returns 0, indicating no pause time between steps.
+     * @return The current simulation time (ready immediately).
      */
     @Override
     public double nextPathAvailable() {
-        // In this Python-style implementation, there are no pauses between steps.
-        // The node is ready for the next step as soon as the current one finishes.
-        return SimClock.getTime();
+        return 0; // Tidak ada waktu diam
     }
 
     /**
-     * Creates a replicate of the movement model using the copy constructor.
-     *
-     * @return A new movement model with the same settings and state as this model.
+     * Creates a replicate of this movement model instance.
+     * @return A new LevyWalk instance with the same parameters.
      */
     @Override
-    public MovementModel replicate() {
+    public LevyWalk replicate() {
         return new LevyWalk(this);
     }
 
     /**
-     * Returns the last known waypoint (current position) of the node.
-     * @return The last waypoint or null if getInitialLocation hasn't been called.
+     * Indicates whether this movement model is designed to have its full trajectory
+     * history drawn on the GUI (if the global GUI option is enabled).
+     * Levy Walk typically involves visualizing the full path.
+     * @author hendrowunga
+     * @return true
      */
-    public Coord getLastWaypoint() {
-        return lastWaypoint;
+    @Override
+    public boolean shouldDrawTrajectoryHistory() {
+        return true; 
     }
+
+
 }
