@@ -189,7 +189,7 @@ public class LevyWalk extends MovementModel {
      */
     @Override
     public boolean shouldDrawTrajectoryHistory() {
-        return true; 
+        return true;
     }
 
 
