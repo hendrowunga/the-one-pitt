@@ -25,7 +25,7 @@ dependencies {
     implementation(files('lib/ECLA.jar'))
     implementation(files('lib/DTNConsoleConnection.jar'))
     implementation(files('lib/uncommons-maths-1.2.1.jar'))
-    testImplementation(files('lib/junit-4.8.2.jar'))
+    implementation(files('lib/junit-4.8.2.jar'))
 }
 
 sourceSets {
@@ -46,7 +46,6 @@ sourceSets {
         }
     }
 }
-
 tasks.jar {
     manifest {
         attributes["Main-Class"] = "core.DTNSim"
@@ -55,6 +54,10 @@ tasks.jar {
 
 tasks.named('run', JavaExec) {
     args = ['1', 'settings/default_settings.txt'] // default ONE
+//    args = ['1', 'settings/test_settings.txt']
+//    args = ['-b','7', 'settings/test_settings.txt']
+//    args = ['1', 'settings/Movement/LevyWalk.txt']
+
 
     // Run routing configuration
 //    args = ['-b','11', 'settings/Prophet/prophet_Movenment_perStrategyForwarding.txt']

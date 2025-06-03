@@ -8,6 +8,7 @@ import java.util.Random;
 
 /**
  * A random number generator for a Pareto distribution
+ * 
  * @author Frans Ekman
  */
 public class ParetoRNG {
@@ -15,10 +16,11 @@ public class ParetoRNG {
 	private double xm; // min value (Xm)
 	private double k; // coefficient
 	private double maxValue;
-	
+
 	/**
 	 * Creates a new Pareto random number generator that makes use of a normal
 	 * random number generator
+	 * 
 	 * @param rng
 	 * @param k
 	 * @param minValue
@@ -34,9 +36,10 @@ public class ParetoRNG {
 			this.maxValue = maxValue;
 		}
 	}
-	
+
 	/**
 	 * Returns a Pareto distributed double value
+	 * 
 	 * @return a Pareto distributed double value
 	 */
 	public double getDouble() {
@@ -45,9 +48,9 @@ public class ParetoRNG {
 		}
 		double x;
 		do {
-			x = xm * Math.pow((1 - rng.nextDouble()), (-1/k));
+			x = xm * Math.pow((1 - rng.nextDouble()), (-1 / k));
 		} while (x > maxValue);
 		return x;
 	}
-		
+
 }

@@ -3,7 +3,10 @@
  * Released under GPLv3. See LICENSE.txt for details.
  */
 package movement;
-
+/*
+ * © 2025 hendrowunga, University of Sanata Dharma
+ * Created on 5/18/25
+ */
 import core.Coord;
 import core.Settings;
 
