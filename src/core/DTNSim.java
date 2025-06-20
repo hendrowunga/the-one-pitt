@@ -141,7 +141,7 @@ public class DTNSim {
 	 * @param confFiles File name paths where to read additional settings 
 	 * @param firstIndex Index of the first config file name
 	 */
-	private static void initSettings(String[] confFiles, int firstIndex) {
+	public static void initSettings(String[] confFiles, int firstIndex) {
 		int i = firstIndex;
 
         if (i >= confFiles.length) {
