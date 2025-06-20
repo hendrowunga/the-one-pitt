@@ -1,7 +1,9 @@
 /*
- * © 2025 hendrowunga, University of Sanata Dharma
- * Created on 5/30/25
+ * @author hendrowunga, University of Sanata Dharma
+ * @version 1.0
+ * @since 5/30/25
  */
+
 package movement;
 
 import core.*;
