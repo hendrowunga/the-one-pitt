@@ -35,7 +35,9 @@ public class Settings {
 	protected static Properties props;
 	/** file name of the default settings file ({@value}) */
 	public static final String DEF_SETTINGS_FILE = "settings/default_settings.txt";
+	// public static final String DEF_SETTINGS_FILE = "settings/rl_training_scenario.txt";
 //	public static final String DEF_SETTINGS_FILE = "settings/test_settings.txt";
+//	public static final String DEF_SETTINGS_FILE = "settings/run_carl.conf";
 
 	/**
 	 * Setting to define the file name where all read settings are written
