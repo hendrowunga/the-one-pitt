@@ -60,6 +60,7 @@ tasks.named('run', JavaExec) {
 //    args = ['1', 'settings/default_settings.txt'] // default ONE
     args = ['1', 'settings/movement/LevyWalk.txt'] // default ONE
     // args = ['1', 'settings/rl_training_scenario.txt']
+//     args = ['1', 'settings/routing/Epidemic/epidemic_dataset_settings.txt']
 
 //    args = ['1', 'settings/LevyWalk.txt']
 //  args = ['1', 'settings/rl/rl_tsp_simulation.txt']

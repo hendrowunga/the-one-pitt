@@ -263,7 +263,10 @@ public abstract class MessageRouter {
      * 
      * @return The host object
      */
-    protected DTNHost getHost() {
+//    protected DTNHost getHost() {
+//        return this.host;
+//    }
+    public DTNHost getHost() {
         return this.host;
     }
 
