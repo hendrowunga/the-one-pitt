@@ -1,7 +1,3 @@
-/*
- * Copyright 2010 Aalto University, ComNet
- * Released under GPLv3. See LICENSE.txt for details.
- */
 package routing;
 
 import java.util.ArrayList;
@@ -25,6 +21,8 @@ import core.Tuple;
  * Implementation of PRoPHET router as described in
  * <I>Probabilistic routing in intermittently connected networks</I> by
  * Anders Lindgren et al.
+ *
+ * © 2025 hendrowunga, University of Sanata Dharma
  */
 public class ProphetRouterForwardingMod extends ActiveRouter {
 	/** delivery predictability initialization constant */
@@ -122,9 +120,6 @@ public class ProphetRouterForwardingMod extends ActiveRouter {
 		initPolicyMaps();
 
 		initPreds();
-		// this.lastAgeUpdate = SimClock.getTime(); // Initialize lastAgeUpdate
-		// this.coinRandom = new Random(SimClock.getIntTime()); // Initialize random for
-		// COIN
 	}
 
 	/**
@@ -417,24 +412,10 @@ public class ProphetRouterForwardingMod extends ActiveRouter {
 		// Tambahkan info MOFO/MOPR jika aktif
 		if (queueingPolicyEnum == QueueingPolicyEnum.MOFO) {
 			RoutingInfo mofoInfo = new RoutingInfo(forwardedCounts.size() + " msgs with forward counts");
-			// Detail pesan/hitungan bisa ditambahkan di sini jika verbose mode
-			// if (get){ // Check if detailed info is requested, e.g., via a setting
-			// for(Map.Entry<String, Integer> entry : forwardedCounts.entrySet()) {
-			// mofoInfo.addMoreInfo(new RoutingInfo(entry.getKey() + ": " +
-			// entry.getValue()));
-			// }
-			// }
 			ri.addMoreInfo(mofoInfo);
 		}
 		if (queueingPolicyEnum == QueueingPolicyEnum.MOPR) {
 			RoutingInfo moprInfo = new RoutingInfo(forwardProgresses.size() + " msgs with forward progress");
-			// Detail pesan/FP bisa ditambahkan
-			// if (get){ // Check if detailed info is requested
-			// for(Map.Entry<String, Double> entry : forwardProgresses.entrySet()) {
-			// moprInfo.addMoreInfo(new RoutingInfo(String.format("%s: %.6f",
-			// entry.getKey(), entry.getValue())));
-			// }
-			// }
 			ri.addMoreInfo(moprInfo);
 		}
 

@@ -1,7 +1,3 @@
-/*
- * Copyright 2010 Aalto University, ComNet
- * Released under GPLv3. See LICENSE.txt for details.
- */
 package routing;
 
 import java.util.ArrayList;
@@ -27,6 +23,8 @@ import core.Tuple; // Gunakan kelas Tuple
  * Anders Lindgren et al.
  *
  * MODIFIED: Uses List<Tuple> for MOFO/MOPR state tracking (LESS EFFICIENT).
+ *
+ * © 2025 hendrowunga, University of Sanata Dharma
  */
 public class ProphetRouterForwarding extends ActiveRouter {
 	/** delivery predictability initialization constant */
