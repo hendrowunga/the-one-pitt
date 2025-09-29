@@ -1,178 +1,210 @@
+/*
+ * @author hendrowunga, University of Sanata Dharma
+ * @version 1.0
+ * @since 5/30/25
+ */
+
 package movement;
 
 import core.*;
 
-
-/*
- * © 2025 hendrowunga, University of Sanata Dharma
- * Created on 5/30/25
- */
 public class LevyWalk extends MovementModel {
-    private static final String ALPHA_S = "alpha"; // Shape parameter for Pareto step length
-    private static final String MIN_STEP_LENGTH_S = "min_step_length"; // Minimum step length (Pareto scale parameter)
-
-    private double alpha; // Shape parameter for Pareto step length
-    private double minStepLength; // Minimum step length (Pareto scale parameter)
-
-    private Coord lastWaypoint; // Stores the node's current location
 
     /**
-     * Creates a new movement model based on a Settings object's settings.
-     * Reads Levy Walk specific parameters (alpha, min_step_length).
-     *
-     * @param s The Settings object where the settings are read from
-     * @throws SimError if settings are invalid.
+     * Shape parameter (alpha) for the Pareto-derived step length distribution.
+     * Smaller alpha means more frequent long jumps. Typical range 0 < alpha <= 2.
+     * Setting ID: {@value}. Default: {@link #DEFAULT_ALPHA}.
      */
-    public LevyWalk(Settings s) {
-        super(s); // Call superclass constructor to read common settings (speed, world size)
+    public static final String ALPHA_S = "alpha";
+    /**
+     * Minimum step length component. Added to the scaled Pareto sample.
+     * Setting ID: {@value}. Default: {@link #DEFAULT_MIN_STEP}.
+     */
+    public static final String MIN_STEP_S = "minStep";
+    /**
+     * Scale factor component for the Pareto sample.
+     * Setting ID: {@value}. Default: {@link #DEFAULT_SCALE_FACTOR}.
+     */
+    public static final String SCALE_FACTOR_S = "scaleFactor";
 
-        try {
-            this.alpha = s.getDouble(ALPHA_S);
-        } catch (SettingsError e) {
-            System.err.println("Setting '" + ALPHA_S + "' not found, using default: 1.5");
-            this.alpha = 1.5; // Default alpha, common in Levy Walk literature
-        }
-        try {
-            // This min_step_length acts as the 'xm' or scale parameter for Pareto Type I
-            this.minStepLength = s.getDouble(MIN_STEP_LENGTH_S);
-        } catch (SettingsError e) {
-            System.err.println("Setting '" + MIN_STEP_LENGTH_S + "' not found, using default: 1.0");
-            this.minStepLength = 1.0; // Default minimum step length
-        }
+    public static final double DEFAULT_ALPHA = 1.5;
+    public static final double DEFAULT_MIN_STEP = 0.1;
+    public static final double DEFAULT_SCALE_FACTOR = 1.0;
 
+    private double alpha;
+    private double minStep;
+    private double scaleFactor;
 
-        // --- Validate Levy Walk specific settings ---
+    private Coord currentPosition; // Stores the node's current location
+
+    /**
+     * Creates a new LevyWalk movement model based on a Settings object's settings.
+     * Reads Levy Walk specific parameters (alpha, minStep, scaleFactor) from the
+     * settings object provided by the simulator (scoped to the host group).
+     *
+     * @param settings The Settings object where the settings are read from (scoped to the host group).
+     * @throws IllegalArgumentException if settings values are invalid.
+     */
+    public LevyWalk(Settings settings) {
+        super(settings); // Read common settings (speed, waitTime, worldSize) from the group scope
+
+        // Read specific Levy Walk settings from the provided Settings object
+        this.alpha = settings.contains(ALPHA_S) ? settings.getDouble(ALPHA_S) : DEFAULT_ALPHA;
+        this.minStep = settings.contains(MIN_STEP_S) ? settings.getDouble(MIN_STEP_S) : DEFAULT_MIN_STEP;
+        this.scaleFactor = settings.contains(SCALE_FACTOR_S) ? settings.getDouble(SCALE_FACTOR_S) : DEFAULT_SCALE_FACTOR;
+
+        // --- Validate Settings ---
         if (this.alpha <= 0) {
-            throw new SimError("LevyWalk: " + ALPHA_S + " (" + this.alpha + ") must be positive.");
+            throw new IllegalArgumentException(ALPHA_S + " must be > 0. Value was " + this.alpha);
         }
-        if (this.minStepLength <= 0) {
-            throw new SimError(
-                    "LevyWalk: " + MIN_STEP_LENGTH_S + " (" + this.minStepLength + ") must be positive.");
+        if (this.minStep < 0) {
+            throw new IllegalArgumentException(MIN_STEP_S + " must be >= 0. Value was " + this.minStep);
         }
+        // Add validation for scaleFactor if needed (e.g., must be > 0)
 
-        // Initial location is set by calling getInitialLocation() later by the simulator
-        this.lastWaypoint = null; // Will be set by getInitialLocation()
+        // currentPosition will be initialized by getInitialLocation() when first needed
+        this.currentPosition = null;
     }
 
     /**
      * Copy constructor. Creates a new instance with the same settings
-     * and state (lastWaypoint) as the prototype. Uses the shared static RNG.
-     *
-     * @param proto The LevyWalk prototype
+     * and state (currentPosition) as the prototype. Uses the shared static RNG.
+     * @param proto The LevyWalk prototype to copy.
      */
     protected LevyWalk(LevyWalk proto) {
-        super(proto); // Call superclass copy constructor
+        super(proto); // Copy common settings
+        // Copy specific Levy Walk parameters
+        this.alpha = proto.alpha;
+        this.minStep = proto.minStep;
+        this.scaleFactor = proto.scaleFactor;
 
-        // Copy specific settings
-        alpha = proto.alpha;
-        minStepLength = proto.minStepLength;
-
-        // Copy current location
-        this.lastWaypoint = (proto.lastWaypoint != null) ? proto.lastWaypoint.clone() : null;
+        // Copy current position if it exists
+        if (proto.currentPosition != null) {
+            this.currentPosition = proto.currentPosition.clone();
+        } else {
+            this.currentPosition = null;
+        }
     }
 
     /**
-     * Returns a possible (random) initial placement for a host.
-     * Uses randomCoord() method (inherited from MovementModel) to get a random location.
-     * Stores this as the starting point for subsequent paths.
-     *
-     * @return Random position on the map.
+     * Returns a random initial placement for a host within world boundaries.
+     * This location is also set as the node's initial current position.
+     * @return Initial random position.
      */
     @Override
     public Coord getInitialLocation() {
-        Coord c = randomCoord();
-        this.lastWaypoint = c; // Store the initial location
-        return c;
+        assert rng != null : "MovementModel RNG not initialized!";
+
+        double worldX = getMaxX(); // Inherited from superclass
+        double worldY = getMaxY(); // Inherited from superclass
+
+        // Generate random coordinates within the world boundaries
+        double x = rng.nextDouble() * worldX;
+        double y = rng.nextDouble() * worldY;
+
+        this.currentPosition = new Coord(x, y);
+        return this.currentPosition.clone(); // Return a copy
     }
 
     /**
-     * Generates and returns the next path (one Levy "flight") based on Python logic.
-     * The path starts from the current location (lastWaypoint).
-     * Samples step length from Pareto Type I (xm=minStepLength, alpha=alpha).
-     * Samples direction uniformly.
-     * If the potential new location is out of bounds, the node stays put.
-     *
-     * @return A Path object representing one flight segment (or staying put).
-     * @throws IllegalStateException if initial location is not set.
+     * Generates and returns the next path for the node (a single step/flight).
+     * The step length is derived from a Pareto distribution (non-standard parameterization).
+     * Direction is random. Boundary handling uses a 'stay put' strategy if the step
+     * goes out of bounds.
+     * @return A Path object representing the single step, starting from the position
+     *         before the step and ending at the position after the step/boundary check.
+     * @throws IllegalStateException if the MovementModel RNG is not initialized.
      */
     @Override
     public Path getPath() {
-        if (this.lastWaypoint == null) {
-            throw new IllegalStateException("Initial location not set! Call getInitialLocation first.");
+        assert rng != null : "MovementModel RNG not initialized!";
+
+        // Ensure currentPosition is initialized
+        if (this.currentPosition == null) {
+            getInitialLocation(); // Fallback
         }
 
-        Coord oldLocation = this.lastWaypoint; // The current location of the node
+        // Store the position at the start of this step
+        Coord startPosition = this.currentPosition.clone();
 
-        // Get world dimensions from superclass
-        double maxX = getMaxX();
-        double maxY = getMaxY();
+        // Create a Path object for this step. It will contain the start and end points.
+        Path path = new Path(generateSpeed()); // Speed from superclass settings
+        // Adding the start position as the first waypoint is optional but aligns with some path representations
+        // path.addWaypoint(startPosition); // Uncomment if you want start point explicitly in path waypoints
 
-        // --- 1. Generate Step Length (Pareto Type I, xm = minStepLength, alpha) ---
-        // Using inverse CDF for Pareto Type I: X = xm / (U ^ (1/alpha)), where U is uniform (0, 1]
-        // rng.nextDouble() gives [0.0, 1.0). Using 1.0 - rng.nextDouble() gives (0.0, 1.0]
-        double stepLength = this.minStepLength / Math.pow(1.0 - rng.nextDouble(), 1.0 / this.alpha);
-
-        // --- 2. Generate Random Direction [0, 2*PI) ---
-        double direction = rng.nextDouble() * 2.0 * Math.PI;
-
-        // --- 3. Calculate Potential New Location ---
-        double x = oldLocation.getX() + stepLength * Math.cos(direction);
-        double y = oldLocation.getY() + stepLength * Math.sin(direction);
-
-        Coord potentialNewLocation = new Coord(x, y);
-
-        // --- 4. Boundary Handling (Python Style: Stay Put if Out of Bounds) ---
-        Coord finalLocation;
-        if (x >= 0 && x <= maxX && y >= 0 && y <= maxY) {
-            // If potential location is within bounds, this is the final location
-            finalLocation = potentialNewLocation;
-        } else {
-            // If potential location is out of bounds, the node stays at the old location
-            finalLocation = oldLocation; // Note: this is the OLD location
-            // System.out.println("Step out of bounds, staying put at: " + oldLocation); // Debugging
+        // --- Generate Step Length (Non-Standard Pareto Derivation) ---
+        double u = 0.0;
+        while (u == 0.0) { // Ensure u is not zero for Math.pow
+            u = rng.nextDouble();
         }
+        // Sample from Pareto Type I with scale parameter xm=1
+        double paretoSample_xm1 = Math.pow(u, -1.0 / this.alpha);
+        // Calculate the final step length using minStep and scaleFactor
+        double stepLength = this.minStep + paretoSample_xm1 * this.scaleFactor;
+        // --- End Step Length Generation ---
 
-        // Update the lastWaypoint to the final decided location (either new or old)
-        this.lastWaypoint = finalLocation;
 
-        // --- 5. Create Path ---
-        // A path always goes from the starting point of the step to the final location
-        // The speed is generated uniformly using the inherited method
-        Path p = new Path(generateSpeed());
-        p.addWaypoint(finalLocation); // Add the final location as the destination
+        // --- Generate Random Direction (Uniform [0, 2*PI)) ---
+        double theta = rng.nextDouble() * 2.0 * Math.PI;
+        // --- End Direction Generation ---
 
-        return p; // Return the path
+        // --- Calculate Potential New Location ---
+        double dx = stepLength * Math.cos(theta);
+        double dy = stepLength * Math.sin(theta);
+        double potentialNewX = this.currentPosition.getX() + dx;
+        double potentialNewY = this.currentPosition.getY() + dy;
+        // --- End Calculate Potential New Location ---
+
+
+        // --- Boundary Handling ('Stay Put' Strategy) ---
+        double worldMaxX = getMaxX(); // World width
+        double worldMaxY = getMaxY(); // World height
+
+        if (potentialNewX >= 0 && potentialNewX <= worldMaxX && potentialNewY >= 0 && potentialNewY <= worldMaxY) {
+            // If potential location is within bounds, update the node's current position
+            this.currentPosition.setLocation(potentialNewX, potentialNewY);
+        }
+        // If potential location is out of bounds, this.currentPosition is NOT updated.
+        // The node effectively stays at startPosition for this step.
+        // --- End Boundary Handling ---
+
+        // Add the final position (could be the new location or the old location if out of bounds)
+        // as the destination waypoint for this path segment.
+        path.addWaypoint(this.currentPosition.clone());
+
+        return path; // Return the path (single step from startPosition to currentPosition)
     }
 
     /**
-     * Returns a sim time when the next path is available.
-     * Mimics Python behavior by having no explicit pause time.
-     * The next path is available immediately after the current one finishes.
-     *
-     * @return The current simulation time (meaning immediately available)
+     * Returns the simulation time when the next path is available.
+     * Returns 0, indicating no pause time between steps.
+     * @return The current simulation time (ready immediately).
      */
     @Override
     public double nextPathAvailable() {
-        // In this Python-style implementation, there are no pauses between steps.
-        // The node is ready for the next step as soon as the current one finishes.
-        return SimClock.getTime();
+        return 0; // No pause time
     }
 
     /**
-     * Creates a replicate of the movement model using the copy constructor.
-     *
-     * @return A new movement model with the same settings and state as this model.
+     * Creates a replicate of this movement model instance using the copy constructor.
+     * @return A new LevyWalk instance with the same parameters and state.
      */
     @Override
-    public MovementModel replicate() {
+    public LevyWalk replicate() {
         return new LevyWalk(this);
     }
 
     /**
-     * Returns the last known waypoint (current position) of the node.
-     * @return The last waypoint or null if getInitialLocation hasn't been called.
+     * Indicates whether this movement model is designed to have its full trajectory
+     * history drawn on the GUI (if the global GUI option is enabled).
+     * Levy Walk models are typically visualized with their full path.
+     * @author hendrowunga
+     * @return true.
      */
-    public Coord getLastWaypoint() {
-        return lastWaypoint;
+    @Override
+    public boolean shouldDrawTrajectoryHistory() {
+        return true; // This model wants its history drawn (if GUI allows)
     }
+
+
 }

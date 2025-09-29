@@ -14,7 +14,6 @@ import movement.MovementModel; // Import untuk MovementModel
 import movement.Path;
 import routing.MessageRouter;
 import routing.RoutingInfo;
-
 /**
  * A DTN capable host. Manages the state of a single node in the simulation,
  * including its location, movement, messages, and network interfaces.
@@ -592,5 +591,21 @@ public class DTNHost implements Comparable<DTNHost>, Iterable<Connection> {
 		// iterate over connections (e.g., by taking a snapshot of the connection list).
 		return new ConnectionIterator(this); // Assumes ConnectionIterator exists
 	}
+
+
+    // --- METODE BARU YANG DITAMBAHKAN ---
+    /**
+     * Mengambil nilai initialEnergy dari router yang terpasang pada host ini.
+     * Ini adalah cara yang aman untuk mengakses properti router dari luar.
+     * @return Nilai initialEnergy yang dikonfigurasi.
+     */
+    public int getInitialEnergy() {
+        if (this.router instanceof routing.carl_dtn.ContextAwareRLRouter) {
+            return ((routing.carl_dtn.ContextAwareRLRouter) this.router).initialEnergy;
+        }
+        // Kembalikan nilai default jika router bukan tipe yang diharapkan
+        // atau jika energi tidak didefinisikan.
+        return 0;
+    }
 
 }

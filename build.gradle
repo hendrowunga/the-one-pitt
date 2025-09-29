@@ -26,6 +26,8 @@ dependencies {
     implementation(files('lib/DTNConsoleConnection.jar'))
     implementation(files('lib/uncommons-maths-1.2.1.jar'))
     implementation(files('lib/junit-4.8.2.jar'))
+    implementation(files('lib/jFuzzyLogic.jar'))
+    implementation 'net.sf.py4j:py4j:0.10.9.7'
 }
 
 sourceSets {
@@ -46,6 +48,7 @@ sourceSets {
         }
     }
 }
+
 tasks.jar {
     manifest {
         attributes["Main-Class"] = "core.DTNSim"
@@ -53,10 +56,19 @@ tasks.jar {
 }
 
 tasks.named('run', JavaExec) {
-    args = ['1', 'settings/default_settings.txt'] // default ONE
-//    args = ['1', 'settings/test_settings.txt']
-//    args = ['-b','7', 'settings/test_settings.txt']
-//    args = ['1', 'settings/Movement/LevyWalk.txt']
+//    enabled = false
+//    args = ['1', 'settings/default_settings.txt'] // default ONE
+    args = ['1', 'settings/movement/LevyWalk.txt'] // default ONE
+    // args = ['1', 'settings/rl_training_scenario.txt']
+//     args = ['1', 'settings/routing/Epidemic/epidemic_dataset_settings.txt']
+
+//    args = ['1', 'settings/LevyWalk.txt']
+//  args = ['1', 'settings/rl/rl_tsp_simulation.txt']
+//  args = ['1', 'settings/rl/rl_tsp_simulation_desc.txt']
+//  args = ['1', 'settings/rl/rl_tsp_simulation_coop.txt']
+//  args = ['-b','4', 'settings/rl/carl_dtn_simulation.txt']
+//    args = ['-b','7', 'settings/LevyWalk.txt']
+//    args = ['1', 'settings/Movement/LevyWalkImprove.txt']
 
 
     // Run routing configuration
@@ -73,4 +85,76 @@ tasks.register('createJavadoc', Javadoc) {
     classpath = sourceSets.main.compileClasspath
     destinationDir = file("$buildDir/docs/javadoc")
     options.memberLevel = JavadocMemberLevel.PUBLIC
+}
+
+
+/// =========================================================================
+//  CUSTOM GRADLE TASKS FOR SIMULATION RUNS (REVISED)
+// =========================================================================
+
+// --- Task untuk menjalankan evaluasi CARL-DTN ---
+tasks.register('runCarlDtnEval', JavaExec) {
+    group = 'Simulation Runs'
+    description = 'Runs all evaluation scenarios for the CARL-DTN router.'
+    mainClass = 'core.DTNSim'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['-Xmx1024m']
+
+    // The ONE in batch mode expects the flag '-b' followed by the config file.
+    // Ensure the path is correct relative to the project root.
+    args = ['-b', '10','settings/journal/carl/run_carl.txt']
+}
+
+// --- Task untuk menjalankan evaluasi Epidemic ---
+tasks.register('runEpidemicEval', JavaExec) {
+    group = 'Simulation Runs'
+    description = 'Runs all evaluation scenarios for the Epidemic router.'
+    mainClass = 'core.DTNSim'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['-Xmx1024m']
+
+    args = ['-b', '10','settings/journal/carl/run_epidemic.txt']
+
+}
+
+// --- Task untuk menjalankan evaluasi Prophet ---
+tasks.register('runProphetEval', JavaExec) {
+    group = 'Simulation Runs'
+    description = 'Runs all evaluation scenarios for the Prophet router.'
+    mainClass = 'core.DTNSim'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['-Xmx1024m']
+
+    args = ['-b', '10','settings/journal/carl/run_prophet.txt']
+
+}
+
+// --- Task untuk menjalankan evaluasi Spray and Wait ---
+tasks.register('runSprayAndWaitEval', JavaExec) {
+    group = 'Simulation Runs'
+    description = 'Runs all evaluation scenarios for the Spray and Wait router.'
+    mainClass = 'core.DTNSim'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['-Xmx1024m']
+
+    args = ['-b', '10','settings/journal/carl/run_spray.txt']
+
+}
+
+// --- Task MASTER untuk menjalankan SEMUA evaluasi ---
+tasks.register('runAllEvaluations') {
+    group = 'Simulation Runs'
+    description = 'Runs all evaluation scenarios for all routers sequentially.'
+    dependsOn 'runCarlDtnEval', 'runEpidemicEval', 'runProphetEval', 'runSprayAndWaitEval'
+
+    // Ini penting: task ini sendiri tidak boleh gagal jika salah satu sub-task gagal.
+    // Kita ingin melihat semua kegagalan. Gradle secara default sudah melakukan ini.
+
+    doLast {
+        println "*****************************************************"
+        println "All evaluation simulations have been attempted."
+        println "Check the logs for any failures."
+        println "*****************************************************"
+    }
+
 }

@@ -1,59 +1,60 @@
 package core;
 
-/**
- * A generic key-value tuple.
- */
-public class Tuple<K, V> {
-	private K key;
-	private V value;
+import java.io.Serializable;
+import java.util.Objects;
 
-	/**
-	 * Creates a new tuple.
-	 *
-	 * @param key   The key of the tuple
-	 * @param value The value of the tuple
-	 */
+/**
+ * Kelas Tuple generik yang robust.
+ * Mengimplementasikan equals(), hashCode(), dan Serializable agar bisa
+ * digunakan secara andal dalam struktur data seperti HashMap dan untuk persistensi.
+ *
+ * @param <K> Tipe elemen pertama (key/first)
+ * @param <V> Tipe elemen kedua (value/second)
+ */
+public class Tuple<K, V> implements Serializable {
+	private static final long serialVersionUID = 1L; // Untuk serialisasi
+
+	private final K key;
+	private final V value;
+
 	public Tuple(K key, V value) {
 		this.key = key;
 		this.value = value;
 	}
 
-	/**
-	 * Returns the key
-	 *
-	 * @return the key
-	 */
 	public K getKey() {
 		return key;
 	}
 
-	/**
-	 * Returns the value
-	 *
-	 * @return the value
-	 */
 	public V getValue() {
 		return value;
 	}
 
-	/**
-	 * Returns a string representation of the tuple
-	 *
-	 * @return a string representation of the tuple
-	 */
-	public String toString() {
-		return key.toString() + ":" + value.toString();
-	}
+	// Metode alternatif yang lebih generik
 	public K getFirst() {
 		return key;
 	}
 
-	/**
-	 * Returns the value
-	 *
-	 * @return the value
-	 */
 	public V getSecond() {
 		return value;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Tuple<?, ?> tuple = (Tuple<?, ?>) o;
+		return Objects.equals(key, tuple.key) &&
+				Objects.equals(value, tuple.value);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(key, value);
+	}
+
+	@Override
+	public String toString() {
+		return "(" + key + ", " + value + ")";
 	}
 }
