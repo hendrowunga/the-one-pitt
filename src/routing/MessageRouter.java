@@ -683,5 +683,24 @@ public abstract class MessageRouter {
                 + " messages";
     }
 
+    /**
+     * Menghitung total kapasitas buffer yang sedang terpakai saat ini.
+     * Metode ini menjumlahkan ukuran (size) dari semua pesan yang tersimpan
+     * di dalam koleksi pesan router.
+     *
+     * @return Total ukuran pesan yang tersimpan dalam satuan bytes.
+     */
+    public int getBufferOccupancy() {
+        int occupied = 0;
+
+        // Melakukan iterasi untuk setiap pesan yang ada di dalam buffer
+        for (Message m : getMessageCollection()) {
+            // Menjumlahkan ukuran setiap pesan ke variabel akumulator
+            occupied += m.getSize();
+        }
+
+        return occupied;
+    }
+
     public abstract MessageRouter replicate();
 }
