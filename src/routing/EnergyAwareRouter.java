@@ -34,7 +34,7 @@ public class EnergyAwareRouter extends ActiveRouter
 
 	private final double[] initEnergy;
 	private double warmupTime;
-	private double currentEnergy;
+	protected double currentEnergy;
 	/** energy usage per scan */
 	private double scanEnergy;
 	private double transmitEnergy;
